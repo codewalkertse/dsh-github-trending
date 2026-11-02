@@ -74,6 +74,7 @@ export const CSS = `
 .dshgt-period{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gt-fg);}
 .dshgt-period-check{color:var(--gt-ok);font-size:12px;line-height:1;}
 .dshgt-chip{appearance:none;font:inherit;cursor:pointer;border:1px solid var(--gt-border);background:var(--gt-bg);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--gt-muted);}
+.dshgt-chip:disabled{cursor:not-allowed;opacity:.4;}
 .dshgt-chip[aria-pressed="true"]{background:color-mix(in srgb,var(--gt-accent) 14%,var(--gt-bg));border-color:var(--gt-accent);color:var(--gt-fg);}
 .dshgt-switch{appearance:none;cursor:pointer;width:36px;height:20px;border-radius:999px;border:1px solid var(--gt-border);background:var(--gt-muted);position:relative;transition:background .15s;}
 .dshgt-switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s;}
@@ -146,8 +147,11 @@ export const CSS = `
 .dshgt-head-actions{margin-left:auto;display:flex;align-items:center;gap:8px;padding-top:2px;flex:none;}
 .dshgt-main-body{flex:1;min-height:0;display:flex;min-width:0;}
 .dshgt-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;}
-.dshgt-main-body > .dshgt-settings{flex:1;min-height:0;padding:16px 24px 20px;}
-.dshgt-view{padding:22px 30px 38px;max-width:1180px;width:100%;display:flex;flex-direction:column;gap:18px;}
+.dshgt-main-body > .dshgt-settings{flex:1;min-height:0;padding:16px 24px 20px;width:100%;max-width:1240px;margin-inline:auto;}
+/* 视图区随可用宽度自适应：不再硬卡 1180，避免超宽屏右侧留大片空白。
+   结构化内容（卡片 / 网格 / 表格 / 列表）铺满；只有长文阅读块（日报正文、空态说明）
+   单独限制行宽并居中，保证可读性。与 .dshgt-page-head 的左/右内边距保持一致。 */
+.dshgt-view{padding:22px 30px 38px;width:100%;display:flex;flex-direction:column;gap:18px;}
 .dshgt-grow{flex:1;min-width:0;}
 .dshgt-dim{font-size:12px;color:var(--gt-muted);}
 .dshgt-empty{padding:48px 0;text-align:center;color:var(--gt-muted);font-size:13px;}
@@ -247,14 +251,17 @@ export const CSS = `
 @keyframes dshgt-spin{to{transform:rotate(360deg);}}
 
 /* ——— 日报 ——— */
+/* 日报是阅读页：整列（工具栏 + 纸面）统一限宽并居中，避免超宽屏下工具栏与正文两段式错位。 */
 .dshgt-digest{padding-top:20px;gap:12px;}
+.dshgt-digest > *{width:100%;max-width:920px;margin-inline:auto;}
 .dshgt-digest-subbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .dshgt-datenav{display:flex;align-items:center;gap:2px;border:1px solid var(--gt-border);border-radius:8px;background:var(--gt-card);padding:2px;}
 .dshgt-icon-btn{width:28px;height:28px;display:grid;place-items:center;border:1px solid transparent;background:var(--gt-bg);border-radius:6px;color:var(--gt-fg);font-family:inherit;font-size:18px;line-height:1;cursor:pointer;flex:none;}
 .dshgt-icon-btn:hover:not(:disabled){background:color-mix(in srgb,var(--gt-fg) 7%,var(--gt-bg));border-color:var(--gt-border);}
 .dshgt-icon-btn:disabled{opacity:.3;cursor:not-allowed;}
 .dshgt-dateselect{appearance:none;height:28px;border:0;background:transparent;font-family:inherit;font-size:13px;color:var(--gt-fg);padding:0 8px;min-width:210px;max-width:320px;cursor:pointer;}
-.dshgt-digest-sheet{max-width:900px;width:100%;border:1px solid var(--gt-border);border-radius:12px;background:var(--gt-card);overflow:hidden;}
+/* 日报预览纸面：阅读类长文，限制行宽。整体列宽由 .dshgt-digest 视图统一居中约束。 */
+.dshgt-digest-sheet{max-width:920px;width:100%;border:1px solid var(--gt-border);border-radius:12px;background:var(--gt-card);overflow:hidden;}
 .dshgt-digest-body{display:flex;flex-direction:column;min-width:0;}
 .dshgt-digest-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;border-bottom:1px solid color-mix(in srgb,var(--gt-border) 70%,transparent);background:color-mix(in srgb,var(--gt-fg) 2.5%,var(--gt-card));}
 .dshgt-seg{display:inline-flex;border:1px solid var(--gt-border);border-radius:8px;padding:2px;background:var(--gt-bg);gap:2px;}
@@ -326,7 +333,10 @@ export const CSS = `
 
 /* ——— 运行记录 ——— */
 .dshgt-runs-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.dshgt-runs-filter{display:flex;gap:4px;margin-left:auto;}
+.dshgt-runs-filter{display:flex;align-items:center;gap:4px;margin-left:auto;flex-wrap:wrap;}
+/* 两个筛选维度：记录类型 与 周期/状态，用竖线隔开，避免同名胶囊混淆。 */
+.dshgt-chipgroup{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.dshgt-chipgroup-sep{width:1px;align-self:stretch;min-height:14px;background:var(--gt-border);margin:0 4px;}
 .dshgt-run-list{border-top:1px solid var(--gt-border);}
 .dshgt-run-item{border-bottom:1px solid color-mix(in srgb,var(--gt-border) 70%,transparent);}
 .dshgt-run-row{display:grid;grid-template-columns:18px 120px 56px minmax(0,1fr) 78px 74px 20px;align-items:center;gap:12px;min-height:52px;width:100%;padding:0 6px;border:0;background:none;text-align:left;font-family:inherit;color:var(--gt-fg);cursor:pointer;border-radius:6px;}
@@ -362,10 +372,11 @@ export const CSS = `
 .dshgt-about{max-width:460px;width:100%;}
 .dshgt-about-head{display:flex;align-items:center;gap:10px;}
 .dshgt-about-title{margin:0;font-size:15px;font-weight:600;}
-.dshgt-about-close{margin-left:auto;appearance:none;font:inherit;font-size:12px;cursor:pointer;border-radius:7px;border:1px solid var(--gt-border);background:var(--gt-bg);padding:4px 11px;color:var(--gt-muted);}
-.dshgt-about-close:hover{color:var(--gt-fg);border-color:color-mix(in srgb,var(--gt-accent) 40%,var(--gt-border));}
+.dshgt-about-close{margin-left:auto;flex:none;display:grid;place-items:center;width:28px;height:28px;padding:0;appearance:none;font:inherit;cursor:pointer;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--gt-muted);}
+.dshgt-about-close:hover{color:var(--gt-fg);background:color-mix(in srgb,var(--gt-fg) 7%,var(--gt-bg));border-color:var(--gt-border);}
+.dshgt-about-close:focus-visible{outline:2px solid color-mix(in srgb,var(--gt-accent) 45%,transparent);outline-offset:1px;}
 /* 居中的应用身份区块：logo / 名称 / 版本胶囊 */
-.dshgt-about-identity{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0 18px;}
+.dshgt-about-identity{display:flex;flex-direction:column;align-items:center;gap:8px;padding:4px 0 16px;}
 .dshgt-about-logo svg{width:56px;height:56px;border-radius:14px;display:block;box-shadow:0 4px 14px rgba(0,0,0,.18);}
 .dshgt-about-name{font-size:16px;font-weight:650;letter-spacing:-.01em;}
 .dshgt-about-ver{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--gt-fg);background:var(--gt-card);border:1px solid var(--gt-border);border-radius:999px;padding:1px 9px;line-height:17px;}
