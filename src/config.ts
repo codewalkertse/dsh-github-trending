@@ -171,6 +171,16 @@ export interface Settings {
   corePath: string;
   /** 缓存缺失时是否自动从 Release 下载核心（首次运行需要联网）。 */
   coreAutoDownload: boolean;
+  /**
+   * 核心进程的出站网络代理（如 http://127.0.0.1:7890）。GUI 宿主往往不继承
+   * shell 的 http(s)_proxy，国内直连 GitHub 会超时；这里显式注入到核心子进程的
+   * HTTP_PROXY/HTTPS_PROXY/ALL_PROXY（含大小写两份）。空串 = 不使用代理。
+   */
+  network: NetworkSettings;
+}
+
+export interface NetworkSettings {
+  proxy: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -229,6 +239,7 @@ export const DEFAULT_SETTINGS: Settings = {
   schedule: { enabled: true, time: '08:30:00', timezone: 'Asia/Shanghai', periods: ['daily', 'weekly', 'monthly'] },
   corePath: '',
   coreAutoDownload: true,
+  network: { proxy: '' },
 };
 
 /** 核心支持的 provider 默认端点（空字符串 = 必须由用户填）。 */
@@ -253,7 +264,7 @@ export function sectionOfField(field: string): SettingsSection | undefined {
   if (field.startsWith('summarize.')) return 'summarize';
   if (field.startsWith('releases.')) return 'releases';
   if (field.startsWith('schedule.')) return 'schedule';
-  if (field === 'corePath' || field === 'coreAutoDownload') return 'source';
+  if (field === 'corePath' || field === 'coreAutoDownload' || field === 'network.proxy') return 'source';
   return undefined;
 }
 
@@ -267,6 +278,7 @@ export function mergeSettingsSection(stored: Settings, incoming: Settings, secti
     case 'source':
       next.corePath = incoming.corePath;
       next.coreAutoDownload = incoming.coreAutoDownload;
+      next.network = incoming.network;
       break;
     case 'model':
       next.model = incoming.model;
@@ -431,6 +443,9 @@ export function normalizeSettings(input: unknown): Settings {
     },
     corePath: str(raw.corePath, DEFAULT_SETTINGS.corePath).trim(),
     coreAutoDownload: bool(raw.coreAutoDownload, DEFAULT_SETTINGS.coreAutoDownload),
+    network: {
+      proxy: str((raw.network as Record<string, unknown> | undefined)?.proxy, DEFAULT_SETTINGS.network.proxy).trim(),
+    },
   };
 }
 
@@ -466,6 +481,16 @@ function autoInRange(value: 'auto' | number, min: number, max: number): boolean 
 export function validateSettings(settings: Settings, providers: readonly string[] = CORE_PROVIDERS): Problem[] {
   const problems: Problem[] = [];
   const { model, repo, trending, summarize, releases, output, schedule } = settings;
+
+  // network.proxy：空串 = 不代理；否则必须是 http(s)://host:port 形态的 URL。
+  const proxy = (settings.network?.proxy ?? '').trim();
+  if (proxy !== '' && !/^https?:\/\/[^\s]+$/.test(proxy)) {
+    problems.push({
+      field: 'network.proxy',
+      code: 'CONFIG_INVALID',
+      message: '代理必须是 http(s):// 地址（如 http://127.0.0.1:7890），留空则不使用代理',
+    });
+  }
 
   if (model.provider.trim() === '') {
     problems.push({ field: 'model.provider', code: 'CONFIG_INVALID', message: '缺少 provider' });

@@ -286,3 +286,26 @@ test('summarize / releases 分区归位与分段合并互不牵连', () => {
   assert.equal(merged.releases.perRepoLimit, 4); // 其它分区保持已保存值
   assert.equal(merged.releases.includePrerelease, false);
 });
+
+test('network.proxy：归一化默认空串、校验 http(s) 形态、可保存到 source 分区', () => {
+  // 缺省为空串
+  const d = config.normalizeSettings({});
+  assert.equal(d.network.proxy, '');
+  // 保留合法值（去空白）
+  const ok = config.normalizeSettings({ network: { proxy: '  http://127.0.0.1:7890  ' } });
+  assert.equal(ok.network.proxy, 'http://127.0.0.1:7890');
+  // 非法值被校验拦下，且归属 source 分区
+  const bad = config.normalizeSettings({ network: { proxy: '7890' } });
+  const problems = config.validateSettings(
+    { ...bad, model: { ...bad.model, provider: 'deepseek', model: 'x' }, repo: { ...bad.repo, path: '/tmp/x' } },
+    ['deepseek'],
+  );
+  const p = problems.find((x) => x.field === 'network.proxy');
+  assert.ok(p, 'proxy problem expected');
+  assert.equal(config.sectionOfField('network.proxy'), 'source');
+  // 分段保存只并入 source 的 network
+  const stored = config.normalizeSettings({});
+  const incoming = config.normalizeSettings({ network: { proxy: 'http://127.0.0.1:7890' } });
+  const merged = config.mergeSettingsSection(stored, incoming, 'source');
+  assert.equal(merged.network.proxy, 'http://127.0.0.1:7890');
+});

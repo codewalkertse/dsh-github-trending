@@ -264,6 +264,8 @@ export interface SettingsShape {
   output: { dir: string };
   schedule: { enabled: boolean; time: string; timezone: string; periods: Period[] };
   corePath: string;
+  /** 核心出站网络代理；空串 = 不使用。旧设置可能没有该字段。 */
+  network?: { proxy: string };
 }
 
 export interface StatePayload {
