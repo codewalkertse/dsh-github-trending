@@ -46,7 +46,7 @@ function cloneSettings(settings: SettingsShape): SettingsShape {
 function sectionSlice(settings: SettingsShape, section: SectionId): Record<string, unknown> {
   switch (section) {
     case 'source':
-      return { corePath: settings.corePath };
+      return { corePath: settings.corePath, network: settings.network };
     case 'model':
       return { model: settings.model };
     case 'repo':
@@ -99,8 +99,9 @@ export function SettingsView(props: { t: Translate; store: StoreValue; onClose?:
   const [signInModal, setSignInModal] = React.useState(false);
 
   const anyDirty = SECTIONS.some((id) => dirtySections[id]);
-  // 「核心」只有状态与核心操作（重新检查 / 下载），没有可保存的字段。
-  const sectionEditable = section !== 'source';
+  // 「核心」分区有唯一可保存字段：出站网络代理（network.proxy）。核心状态与下载
+  // 仍是即时操作，不受「保存本页」影响。
+  const sectionEditable = true;
 
   React.useEffect(() => {
     if (state !== null && !anyDirty) setDraft(state.settings);
@@ -435,6 +436,19 @@ export function SettingsView(props: { t: Translate; store: StoreValue; onClose?:
       ? null
       : h(Alert, { kind: 'err', title: t('core.label') }, h('div', null, state.core.message ?? ''), h('div', { className: 'dshgt-hint' }, t('core.order'))),
     h('p', { className: 'dshgt-hint' }, t('core.order')),
+    h(
+      Row,
+      { label: t('network.proxy'), help: t('network.proxy.help') },
+      h(Input, {
+        mono: true,
+        width: 280,
+        value: draft.network?.proxy ?? '',
+        placeholder: t('network.proxy.placeholder'),
+        onInput: (value: string) => update((next) => {
+          next.network = { proxy: value };
+        }),
+      }),
+    ),
     state.coexistence.found
       ? h(Alert, { kind: 'warn', title: t('coexist.title') }, h('div', { className: 'dshgt-mono', style: { fontSize: 12 } }, `${state.coexistence.path ?? ''} ${state.coexistence.version ?? ''}`), h('div', null, state.coexistence.message ?? ''), h('div', { className: 'dshgt-hint' }, t('coexist.hint')))
       : null,

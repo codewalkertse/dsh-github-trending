@@ -89,6 +89,8 @@ dsh plugin --profile <profile> add @morehao/dsh-github-trending
 
 环境要求：DSH `0.2.1-rc.3` 以上、Node.js `^22.20.0 || >=24.0.0`、本地 git ≥ 2.30 与可写远端、git/GitHub 凭据（仅 push 与开 PR 需要）。核心二进制首次运行从 GitHub Release 下载并按 sha256 校验，之后离线复用。
 
+> **网络代理**：核心抓取 GitHub 需要联网。GUI 宿主（从 Finder 启动）通常**不继承** shell 的 `http(s)_proxy`，在国内直连会超时——现象是趋势页抓取失败、回退到 GitHub 搜索 API（无「今日新增」增量、按总 star 排序）。此时在**设置 → 核心 → 网络代理**填 `http://127.0.0.1:7890`（你的代理地址）即可，插件会把它注入核心子进程的 `HTTP(S)_PROXY/ALL_PROXY`。留空则不使用代理。
+
 ## 开发与发版
 
 ```bash

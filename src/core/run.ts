@@ -99,6 +99,24 @@ export function buildCoreArgs(
   return args;
 }
 
+/**
+ * 把设置里的代理地址展开成核心子进程需要的环境变量。返回空对象表示不注入代理。
+ * 同时给大小写两份：Go 的 `http.ProxyFromEnvironment` 等实现只认大写，不少工具
+ * 只认小写，两份都放最稳。
+ */
+export function proxyEnv(proxy: string | undefined): Record<string, string> {
+  const p = (proxy ?? '').trim();
+  if (p === '') return {};
+  return {
+    HTTP_PROXY: p,
+    HTTPS_PROXY: p,
+    ALL_PROXY: p,
+    http_proxy: p,
+    https_proxy: p,
+    all_proxy: p,
+  };
+}
+
 export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_RUN_TIMEOUT_MS;
   const startedAt = nowIso();
@@ -122,6 +140,10 @@ export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
       GH_TOKEN: options.token,
       // 环境变量通道：旧核心会忽略它，不会因为多一个未知参数而失败。
       TRENDRADAR_TRIGGER: options.trigger ?? 'manual',
+      // 出站代理：GUI 宿主往往不继承 shell 的 http(s)_proxy，国内直连 GitHub 会
+      // 超时。设置里填了就显式注入（大小写两份，Go 的 ProxyFromEnvironment 与多数
+      // 工具都能识别）。空/未设时不注入任何键，保持原有环境透传行为。
+      ...proxyEnv(options.settings.network?.proxy),
     }),
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
