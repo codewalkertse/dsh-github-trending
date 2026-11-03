@@ -1,11 +1,11 @@
 /**
- * 设置页：内容来源 / 模型 / 仓库 / 认证 / 榜单 / 调度。
+ * 设置页：核心 / 模型 / 仓库 / 认证 / 榜单 / 调度。
  *
  * 版式是「左侧纵向 tab + 右侧可滚动分区」，避免整页一长条、宿主裁掉且不出滚动条。
  * 编辑在本地 `draft` 里进行，只有点「保存设置」才 POST /config —— 与规格
  * 「禁止静默复制」「保存前预检」一致；快速填充也要用户再点一次确认。
  *
- * 只暴露普通用户需要的字段：「内容来源」是状态与核心操作（重新检查 / 下载），
+ * 只暴露普通用户需要的字段：「核心」是状态与核心操作（重新检查 / 下载），
  * 没有可编辑项，因此不出现「保存本页」；`TRENDING_DIGEST_CORE` 不提供界面入口
  * （需要时用环境变量或直接改 settings.json），手动 `凭据引用` 也不露出（由快速
  * 填充自动带入）。避免把开发/排障概念摊在首屏，也避免出现「点了没反应」的开关。
@@ -99,7 +99,7 @@ export function SettingsView(props: { t: Translate; store: StoreValue; onClose?:
   const [signInModal, setSignInModal] = React.useState(false);
 
   const anyDirty = SECTIONS.some((id) => dirtySections[id]);
-  // 「内容来源」只有状态与核心操作（重新检查 / 下载），没有可保存的字段。
+  // 「核心」只有状态与核心操作（重新检查 / 下载），没有可保存的字段。
   const sectionEditable = section !== 'source';
 
   React.useEffect(() => {
