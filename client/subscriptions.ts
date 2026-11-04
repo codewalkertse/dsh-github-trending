@@ -37,6 +37,15 @@ export interface SubscriptionsProps {
 const REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const KNOWN_STATUSES: readonly SubscriptionStatus[] = ['baseline', 'ok', 'no_change', 'rate_limited', 'failed'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * 成功回执（已添加 / 已移除 / 分析完成）自动收起的时长，与设置页 `NOTICE_TTL_MS` 保持一致。
+ */
+const NOTICE_TTL_MS = 5000;
+/**
+ * 「暂无新变化 / 没订阅」这类分析结论比普通成功回执信息量大，给更长的阅读时间后也自动收起；
+ * 同时保留横幅上的「×」让用户能提前关掉。
+ */
+const SKIPPED_NOTICE_TTL_MS = 8000;
 
 type SortKey = 'name' | 'tag' | 'summary';
 
@@ -387,6 +396,26 @@ export function SubscriptionsView(props: SubscriptionsProps): any {
     return () => controller.abort();
   }, [load]);
 
+  // 成功回执到点自动收起；换了一条提示就重新计时，旧计时器因值不同不会误清新提示。
+  React.useEffect(() => {
+    if (note === null) return undefined;
+    const timer = setTimeout(() => {
+      setNote((current) => (current === note ? null : current));
+    }, NOTICE_TTL_MS);
+    return () => clearTimeout(timer);
+  }, [note]);
+
+  // 分析结果横幅（成功/完成、以及 skipped 结论）都自动收起；skipped 信息量大，用更长的 TTL。
+  // 横幅上的「×」仍保留，让用户能提前关掉。
+  React.useEffect(() => {
+    if (result === null || !result.ok) return undefined;
+    const ttl = result.skipped ? SKIPPED_NOTICE_TTL_MS : NOTICE_TTL_MS;
+    const timer = setTimeout(() => {
+      setResult((current) => (current === result ? null : current));
+    }, ttl);
+    return () => clearTimeout(timer);
+  }, [result]);
+
   const rows = mergeRows(list);
   const needle = query.trim().toLowerCase();
   const matched = needle === '' ? rows : rows.filter((row) => row.name.toLowerCase().includes(needle));
@@ -506,6 +535,20 @@ export function SubscriptionsView(props: SubscriptionsProps): any {
   const drawerRow = openRepo === null ? undefined : rows.find((row) => row.name === openRepo);
   const globalBusy = analyzing !== null;
 
+  // 分析结果横幅：成功类与 skipped 结论都会自动收起（见上方 effect，skipped 用更长 TTL）；
+  // skipped 另带「×」可提前关闭；失败已在 `error` state 里另作常驻展示。
+  const dismissBanner = h(
+    'button',
+    {
+      type: 'button',
+      className: 'dshgt-alert-dismiss',
+      'aria-label': t('subs.analyze.dismiss'),
+      title: t('subs.analyze.dismiss'),
+      onClick: () => setResult(null),
+    },
+    '×',
+  );
+
   const banner =
     result === null
       ? null
@@ -515,15 +558,24 @@ export function SubscriptionsView(props: SubscriptionsProps): any {
           ? h(
               Alert,
               { kind: 'warn' },
-              // subscribed === 0 ⇒ 周期分支上根本没有订阅列表（最坑的「不知道发生了什么」场景）；
-              // 否则才是「有订阅但都没变化」。
-              result.subscribed === 0
-                ? result.scope === 'all'
-                  ? t('subs.analyze.noSubs', { branch: result.branch ?? '' })
-                  : t('subs.analyze.noSubsOne')
-                : result.scope === 'all'
-                  ? t('subs.analyze.skipped')
-                  : t('subs.analyze.skippedOne', { repo: result.repo ?? '' }),
+              h(
+                'div',
+                { className: 'dshgt-alert-row' },
+                h(
+                  'span',
+                  null,
+                  // subscribed === 0 ⇒ 周期分支上根本没有订阅列表（最坑的「不知道发生了什么」场景）；
+                  // 否则才是「有订阅但都没变化」。
+                  result.subscribed === 0
+                    ? result.scope === 'all'
+                      ? t('subs.analyze.noSubs', { branch: result.branch ?? '' })
+                      : t('subs.analyze.noSubsOne')
+                    : result.scope === 'all'
+                      ? t('subs.analyze.skipped')
+                      : t('subs.analyze.skippedOne', { repo: result.repo ?? '' }),
+                ),
+                dismissBanner,
+              ),
             )
           : h(
               Alert,

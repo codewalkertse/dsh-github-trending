@@ -28,7 +28,7 @@
 | [src/host/credentials.ts](src/host/credentials.ts) · [src/host/quickfill.ts](src/host/quickfill.ts) · [src/host/proxy.ts](src/host/proxy.ts) | 凭据解析、宿主 provider 快速填充、OAuth 类凭据的回环代理 |
 | [src/core/exec.ts](src/core/exec.ts) · [src/core/channel.ts](src/core/channel.ts) · [src/core/handshake.ts](src/core/handshake.ts) · [src/core/run.ts](src/core/run.ts) | 子进程封装、配置通道（FIFO）、握手、运行 |
 | [client/](client/) | Web Client：`index`（01 外壳）/ `overview` / `digest` / `runs` / `settings` / `about` / `markdown` / `digest-core` / `run-controller` / `panel-icon` / `store` / `api` / `i18n` / `ui` / `styles` |
-| `@morehao/trendradar-contract`（npm） | 契约单一来源：schema + fixtures + 生成的 TS 类型 / ajv 校验器 / 错误目录（wire：`ipcSchema=2` / `digestSchema=2`） |
+| `@morehao/trendradar-contract`（npm） | 契约单一来源：schema + fixtures + 生成的 TS 类型 / ajv 校验器 / 错误目录（wire：`ipcSchema=3` / `digestSchema=2`） |
 | [scripts/set-core-version.mjs](scripts/set-core-version.mjs) | 写 `package.json` 的 `dsh.core.version`（下载哪个核心 Release 的唯一来源） |
 | [scripts/ac/run.mjs](scripts/ac/run.mjs) | AC-P-01…13 的机械部分（人工步骤打印在末尾） |
 | [test/](test/) | `node --test` 离线用例；`test/fixtures/fake-core.mjs` 是假核心 |
@@ -40,9 +40,9 @@
 ### 数据边界
 
 - **状态唯一写者**：`state.json` / `history.json` / `runs/<id>.log` / `previews/<id>.md` 只由 [src/state.ts](src/state.ts) 写；一律「临时文件 + rename」、权限 0600，不允许其他模块直接 `writeFileSync`。设置只有两个写入口：`/config`（用户确认后落盘）与启动时用 bundle 的 `config.corePath` 填空（仅当为空），其余不静默补写。
-- **插件不碰用户仓库**：commit / push / PR / merge 全在核心进程里完成；插件只传配置与凭据，不自己写仓库。只有两个**只读**例外：(1) 设置页读取仓库默认分支时执行 `git symbolic-ref` / `rev-parse`（[src/host/repo.ts](src/host/repo.ts)）；(2) 运行结束后从核心本次返回的 `outcome.files` 里选当天 `.md`，校验路径在 `repo.path` 内、≤512 KB、sha256 与契约一致后，复制到 `$DSH_HOME/github-trending/previews/<runId>.md`（[src/host/runner.ts](src/host/runner.ts)）。两者都不 commit、不改工作树；预览失败不阻断运行。
+- **插件不碰用户仓库**：commit / push / PR / merge 全在核心进程里完成；插件只传配置与凭据，不自己写仓库。唯一的**只读**例外是设置页读取仓库默认分支时执行 `git symbolic-ref` / `rev-parse`（[src/host/repo.ts](src/host/repo.ts)），不 commit、不改工作树。预览副本自 ipc v3 起**直接来自** `RunResult.digest`（核心随结果回传本期 markdown），插件不再读工作树：合并后核心会切回 base 并删分支，事后读文件必然读到旧版或空（[src/host/runner.ts](src/host/runner.ts)）。预览失败不阻断运行。
 - **不翻译语义**：`src/config.ts` 是设置⇄核心 YAML 的唯一映射；核心没有的字段插件里也不加（宁可少一个开关，也不造「点了没反应」的配置）。新增字段必须同时有核心侧依据。
-- **核心版本单一来源**：`package.json` 的 `dsh.core.version` 由 `scripts/set-core-version.mjs` 写入，是「首次运行下载哪个核心 Release」的唯一来源，**不要手改**；契约 wire 版本（ipc/digest=2）由 `dependencies` 里的 `@morehao/trendradar-contract` 决定，`check:naming` 会拦。
+- **核心版本单一来源**：`package.json` 的 `dsh.core.version` 由 `scripts/set-core-version.mjs` 写入，是「首次运行下载哪个核心 Release」的唯一来源，**不要手改**；契约 wire 版本（ipc=3 / digest=2）由 `dependencies` 里的 `@morehao/trendradar-contract` 决定，`check:naming` 会拦。
 - **单运行并发**：所有触发（HTTP 路由、工具、定时器）都必须走 `Runner.run()`；它自己拒绝第二个并发运行，绕过它就等于绕过取消与状态记录。
 
 ### 外部进程与安全
@@ -67,6 +67,16 @@
 - 文案：`client/i18n.ts` 的 zh / en 键集合与占位符必须一一对应（`checkI18n()` + `test/client-i18n.test.mjs` 兜底）；新增文案两份一起加。
 - 错误码是**对外契约**：新增码要同时进 `PLUGIN_CODES` 与分类/提示（`errors.ts`）；码与 `message` 会直接展示在运行页与历史表，改名等于改用户可见文案，已有码不要改名。
 - 工具名 `trending_run` / `trending_history` 是稳定接口：一旦发布不再改名，需要新能力就新增工具。
+
+### 前端瞬时反馈（Toast / 成功提示）
+
+- 操作完成后的「成功 / 已保存 / 已添加 / 已移除 / 已复制 / 无变化」这类**瞬时反馈**必须能自己退场，不能一直挂在页面上、等用户点下一次操作才消失。新增任何瞬时反馈前先确认它有退出路径。
+- 三种允许的退场方式，按信息量选：
+  - **自动消失**：短回执（已复制、保存成功）用 `useEffect` + `setTimeout` 定时清除，默认 5s（复制类可 1.5s 左右）。定时器必须在 cleanup 里 `clearTimeout`，并用「对象/值相等」守卫，避免新旧两条提示互相误清。标准实现见 [client/settings.ts](client/settings.ts) 的 `NOTICE_TTL_MS` + `notice` effect。
+  - **结论类（较长文案）**：如「暂无新变化 / 没订阅 / 跳过原因」这类要读一下的结论，**也自动消失**，但用更长的 TTL（如 8s），并可附带关闭按钮（×）让用户提前关掉。不要为了「让人读完」就让它永久常驻——阅读时间靠拉长 TTL，不靠常驻。
+  - **有意常驻**：只有需要用户照做的操作指令（如更新后「请重启」弹层，见 [client/restore-notice.ts](client/restore-notice.ts)）以及**反映当前状态**的说明（随开关/状态显隐的配置提示）才允许不自动消失，且必须在相应位置注明理由。
+- **错误提示**（失败原因、校验不通过）默认可常驻，直到用户修正或再次操作——不要把错误也做成 5s 自动消失，避免用户错过。
+- 反例（禁止）：把成功提示塞进一个只在「下一次操作开头」才被 `setNote(null)` / `setResult(null)` 重置的 state，结果提示一直留着。
 
 ### 包与发布
 

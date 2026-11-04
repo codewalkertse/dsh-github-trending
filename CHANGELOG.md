@@ -1,5 +1,35 @@
 # Changelog
 
+## [v0.9.5] - 2026-11-04
+
+### Fixes
+
+- **plugin-update**: 版本判定改为以**磁盘已安装版本**为唯一真相（升级 `@morehao/dsh-plugin-kit@^0.5.0`）。修复「一键更新写入磁盘后、进程未重启时，身份条持续提示有新版本」及重复重装同一版本的问题；`restartRequired` 由 Host 视图透传，待重启状态由 `deriveUpdateUiState` 正确落定为 settled。
+
+## [v0.9.3] - 2026-11-04
+
+### Tests
+
+- 新增 `apply()` 裸 ctx 守卫测试（`test/apply-guard.test.mjs`）：用 `@morehao/dsh-plugin-kit/test` 的 `createUndeclaredContext()` / `createAbsentContext()` 断言 `apply` 在服务未就绪时降级不抛，复现「读未声明服务 → 红点无面板」事故；含自检防假绿。
+
+**Full Changelog**: https://github.com/morehao/dsh-github-trending/compare/v0.9.2...v0.9.3
+
+## [v0.9.2] - 2026-11-04
+
+### Fixes
+
+- **client**: auto-dismiss transient success notices (#129)
+
+**Full Changelog**: https://github.com/morehao/dsh-github-trending/compare/v0.9.1...v0.9.2
+
+## [v0.9.1] - 2026-11-04
+
+### Chores
+
+- **core**: 升级 `dsh.core.version` 0.9.0 → 0.9.1。核心侧本版为自动化 PR 流程修复（base 同步、manual 重建、PR 不可合并降噪），插件侧无行为变更。
+
+**Full Changelog**: https://github.com/morehao/dsh-github-trending/compare/v0.9.0...v0.9.1
+
 ## [v0.8.16] - 2026-11-03
 
 ### Fixes
